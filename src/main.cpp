@@ -10,7 +10,7 @@
 
 void printStartMessage(int page_size);
 void createProcess(int text_size, int data_size, Mmu *mmu, PageTable *page_table);
-void allocateVariable(uint32_t pid, std::string var_name, DataType type, uint32_t num_elements, Mmu *mmu, PageTable *page_table);
+void allocateVariable(uint32_t pid, std::string var_name, DataType type, uint32_t num_elements, Mmu *mmu, PageTable *page_table, bool cmd = false);
 void setVariable(uint32_t pid, std::string var_name, uint32_t offset, void *value, Mmu *mmu, PageTable *page_table, uint8_t *memory);
 void freeVariable(uint32_t pid, std::string var_name, Mmu *mmu, PageTable *page_table);
 void terminateProcess(uint32_t pid, Mmu *mmu, PageTable *page_table);
@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
 
     // Create MMU and Page Table
     Mmu *mmu = new Mmu(PHYSICAL_MEMORY);
-    PageTable *page_table = new PageTable(page_size);
+    PageTable *page_table = new PageTable(page_size, PHYSICAL_MEMORY);
 
     // Prompt loop
     std::string command = "";
@@ -50,6 +50,24 @@ int main(int argc, char **argv) {
             int text_size = std::stoi(args.at(1));
             int data_size = std::stoi(args.at(2));
             createProcess(text_size, data_size, mmu, page_table);
+        } else if (command == "allocate") {
+            int pid = std::stoi(args.at(1));
+            std::string var_name = args.at(2);
+            std::string type_input = args.at(3);
+            DataType type;
+            //Short, Int, Float, Long, Double
+            if (type_input == "char") type = Char;
+            else if (type_input == "short") type = Short;
+            else if (type_input == "int") type = Int;
+            else if (type_input == "float") type = Float;
+            else if (type_input == "long") type = Long;
+            else if (type_input == "double") type = Double;
+            else {
+                std::cout << "error: type not recognized" << std::endl;
+                continue;
+            }
+            int num_elements = std::stoi(args.at(4));
+            allocateVariable(pid, var_name, type, num_elements, mmu, page_table, true);
         } else {
             std::cout << "error: command not recognized" << std::endl;
         }
@@ -85,18 +103,79 @@ void createProcess(int text_size, int data_size, Mmu *mmu, PageTable *page_table
     //   - allocate new variables for the <TEXT>, <GLOBALS>, and <STACK>
     //   - print pid
     uint32_t pid = mmu->createProcess();
-    mmu->addVariableToProcess(pid, "<TEXT>", Char, text_size, 0);
-    mmu->addVariableToProcess(pid, "<GLOBALS>", Char, data_size, text_size);
-    mmu->addVariableToProcess(pid, "<STACK>", Char, 65536, text_size + data_size);
+    allocateVariable(pid, "<TEXT>", Char, text_size, mmu, page_table);
+    allocateVariable(pid, "<GLOBALS>", Char, data_size, mmu, page_table);
+    allocateVariable(pid, "<STACK>", Char, 65536, mmu, page_table);
     printf("%d\n", pid);
 }
 
-void allocateVariable(uint32_t pid, std::string var_name, DataType type, uint32_t num_elements, Mmu *mmu, PageTable *page_table) {
+void allocateVariable(uint32_t pid, std::string var_name, DataType type, uint32_t num_elements, Mmu *mmu, PageTable *page_table, bool cmd) {
     // TODO: implement this!
     //   - find first free space within a page already allocated to this process that is large enough to fit the new variable
     //   - if no hole is large enough, allocate new page(s)
     //   - insert variable into MMU
     //   - print virtual memory address
+
+    // Check whether PID exists
+    if (mmu->getProcess(pid) == NULL) {
+        std::cout << "error: process not found" << std::endl;
+        return;
+    }
+
+    // Compute space required
+    uint32_t size = num_elements;
+    if (type == Short) size *= 2;
+    else if (type == Int || type == Float) size *= 4;
+    else if (type == Long || type == Double) size *= 8;
+
+    // Find first fit
+    bool addr_found = false;
+    uint32_t check_virtual_address = 0;
+    Process *process = mmu->getProcess(pid);
+    std::vector<Variable *> variables = mmu->sortedAllocations(process);
+    if (variables.size() > 0) {
+        for (std::vector<Variable *>::iterator it = variables.begin(); it != variables.end(); it++) {
+            if ((*it)->name == var_name) {
+                std::cout << "error: variable already exists" << std::endl;
+                return;
+            }
+            if (check_virtual_address + size <= (*it)->virtual_address) {
+                addr_found = true;
+            } else if (!addr_found) {
+                check_virtual_address = (*it)->virtual_address + (*it)->size;
+            }
+        }
+    }
+    if (!addr_found) {
+        // Ensure first page has been allocated
+        if (!page_table->doesPidOwnPage(pid, 0)) {
+            if (page_table->getFreeFrames() < 1 + size / page_table->getPageSize()) {
+                std::cout << "error: not enough memory remaining" << std::endl;
+                return;
+            }
+            page_table->addEntry(pid, 0);
+        }
+        // Check end of last page allocated
+        int last_page = page_table->getPage(check_virtual_address);
+        if (check_virtual_address + size >= (last_page + 1) * page_table->getPageSize()) {
+            // Allocate new pages
+            uint32_t allocate_end = check_virtual_address + size;
+            int final_page_allocation = page_table->getPage(allocate_end);
+            if (page_table->getFreeFrames() < final_page_allocation - last_page) {
+                std::cout << "error: not enough memory remaining" << std::endl;
+                return;
+            }
+            for (int i = last_page + 1; i <= final_page_allocation; i++) {
+                page_table->addEntry(pid, i);
+            }
+        }
+    }
+
+    // Record variable
+    mmu->addVariableToProcess(pid, var_name, type, size, check_virtual_address);
+
+    // Print address if this was a command
+    if (cmd) std::cout << check_virtual_address << std::endl;
 }
 
 void setVariable(uint32_t pid, std::string var_name, uint32_t offset, void *value, Mmu *mmu, PageTable *page_table, uint8_t *memory) {

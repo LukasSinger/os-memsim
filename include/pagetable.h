@@ -6,11 +6,10 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <mmu.h>
 
-struct PageTableKeyComparator
-{
-    inline bool operator() (const std::string& str1, const std::string& str2)
-    {
+struct PageTableKeyComparator {
+    inline bool operator() (const std::string &str1, const std::string &str2) {
         size_t sep1 = str1.find("|");
         uint32_t pid1 = std::stoi(str1.substr(0, sep1));
         int page1 = std::stoi(str1.substr(sep1 + 1));
@@ -25,15 +24,23 @@ struct PageTableKeyComparator
 class PageTable {
 private:
     int _page_size;
+    int _memory_size;
+    int _free_frames;
     std::map<std::string, int> _table;
 
     std::vector<std::string> sortedKeys();
 
 public:
-    PageTable(int page_size);
+    PageTable(int page_size, uint32_t memory_size);
     ~PageTable();
 
+    std::string getLookupString(uint32_t pid, int page_number);
+    int getPageSize();
+    int getFreeFrames();
+    bool doesPidOwnPage(uint32_t pid, int page_number);
     void addEntry(uint32_t pid, int page_number);
+    int getPage(uint32_t virtual_address);
+    int getOffset(uint32_t virtual_address);
     int getPhysicalAddress(uint32_t pid, uint32_t virtual_address);
     void print();
 };

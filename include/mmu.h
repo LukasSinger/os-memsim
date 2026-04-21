@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-enum DataType : uint8_t {FreeSpace, Char, Short, Int, Float, Long, Double};
+enum DataType : uint8_t { FreeSpace, Char, Short, Int, Float, Long, Double };
 
 typedef struct Variable {
     std::string name;
@@ -16,14 +16,20 @@ typedef struct Variable {
 
 typedef struct Process {
     uint32_t pid;
-    std::vector<Variable*> variables;
+    std::vector<Variable *> variables;
 } Process;
+
+struct VariableAllocationComparator {
+    inline bool operator() (const Variable *var1, const Variable *var2) {
+        return var1->virtual_address < var2->virtual_address;
+    }
+};
 
 class Mmu {
 private:
     uint32_t _next_pid;
     uint32_t _max_size;
-    std::vector<Process*> _processes;
+    std::vector<Process *> _processes;
 
 public:
     Mmu(int memory_size);
@@ -31,6 +37,8 @@ public:
 
     uint32_t createProcess();
     void addVariableToProcess(uint32_t pid, std::string var_name, DataType type, uint32_t size, uint32_t address);
+    Process *getProcess(uint32_t pid);
+    std::vector<Variable *> sortedAllocations(Process *process);
     void print();
 };
 

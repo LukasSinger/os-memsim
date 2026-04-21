@@ -30,10 +30,7 @@ uint32_t Mmu::createProcess() {
 
 void Mmu::addVariableToProcess(uint32_t pid, std::string var_name, DataType type, uint32_t size, uint32_t address) {
     int i;
-    Process *proc = NULL;
-    std::vector<Process *>::iterator it = std::find_if(_processes.begin(), _processes.end(), [pid](Process *p) {
-        return p != nullptr && p->pid == pid;
-        });
+    Process *proc = getProcess(pid);
 
     if (proc != NULL) {
         Variable *var = new Variable();
@@ -43,6 +40,33 @@ void Mmu::addVariableToProcess(uint32_t pid, std::string var_name, DataType type
         var->size = size;
         proc->variables.push_back(var);
     }
+}
+
+Process *Mmu::getProcess(uint32_t pid) {
+    std::vector<Process *>::iterator it = std::find_if(_processes.begin(), _processes.end(), [pid](Process *p) {
+        return p != nullptr && p->pid == pid;
+        });
+    if (it != _processes.end()) {
+        return *it;
+    } else {
+        return NULL;
+    }
+}
+
+std::vector<Variable *> Mmu::sortedAllocations(Process *process) {
+    std::vector<Variable *> variables;
+
+    if (process->variables.size() > 1) {
+        std::vector<Variable *>::iterator it;
+        for (it = process->variables.begin(); it != process->variables.end(); it++) {
+            if ((*it)->type == DataType::FreeSpace) continue;
+            variables.push_back(*it);
+        }
+
+        std::sort(variables.begin(), variables.end(), VariableAllocationComparator());
+    }
+
+    return variables;
 }
 
 void Mmu::print() {
