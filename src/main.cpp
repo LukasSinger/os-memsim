@@ -68,12 +68,15 @@ int main(int argc, char **argv) {
             }
             int num_elements = std::stoi(args.at(4));
             allocateVariable(pid, var_name, type, num_elements, mmu, page_table, true);
+        }
+        else if (command == "exit") {
+            break;
         } else {
             std::cout << "error: command not recognized" << std::endl;
         }
     }
 
-    // Cean up
+    // Clean up
     delete[] memory;
     delete mmu;
     delete page_table;
