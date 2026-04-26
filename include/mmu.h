@@ -40,6 +40,7 @@ public:
     Process *getProcess(uint32_t pid);
     std::vector<Variable *> sortedAllocations(Process *process);
     Variable* getVariable(Process* process, const std::string& name);
+    void printProcesses();
     void print();
 };
 

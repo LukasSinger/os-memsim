@@ -80,6 +80,14 @@ Variable* Mmu::getVariable(Process* process, const std::string& name) {
     return nullptr;
 }
 
+void Mmu::printProcesses() {
+    for (Process* p : _processes) {
+        if (p != nullptr) {
+            std::cout << p->pid << std::endl;
+        }
+    }
+}
+
 void Mmu::print() {
     int i, j;
 

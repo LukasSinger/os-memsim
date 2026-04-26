@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
             uint32_t offset = std::stoi(args.at(3));
 
             // Access the variable 
-            // PID error check
+            // Process not found error check
             Process *process = mmu->getProcess(pid);
             if (!process) {
                 std::cout << "error: process not found" << std::endl;
@@ -144,7 +144,22 @@ int main(int argc, char **argv) {
             }
         } 
         else if (command == "print") {
-            
+            std::string arg = args.at(1);
+
+            if (arg == "mmu") {
+                mmu->print();
+            }
+            else if (arg == "page") {
+                page_table->print();
+            }
+            else if (arg == "processes") {
+                // print all PIDs
+                mmu->printProcesses();
+            }
+            else {
+                // assume format PID:var_name
+                
+            }
         } 
         else if (command == "free") {
             
@@ -273,7 +288,7 @@ void setVariable(uint32_t pid, std::string var_name, uint32_t offset, void *valu
     //           multiple elements of an array)
 
     // Access the variable (some redundant code with the checks, but better safe than sorry)
-    // PID error check
+    // Process not found error check
     Process *process = mmu->getProcess(pid);
     if (process == nullptr) {
         std::cout << "error: process not found" << std::endl;
