@@ -69,6 +69,75 @@ int main(int argc, char **argv) {
             int num_elements = std::stoi(args.at(4));
             allocateVariable(pid, var_name, type, num_elements, mmu, page_table, true);
         }
+        else if (command == "set") {
+            uint32_t pid = std::stoi(args.at(1));
+            std::string var_name = args.at(2);
+            uint32_t offset = std::stoi(args.at(3));
+
+            // Access the variable 
+            // PID error check
+            Process *process = mmu->getProcess(pid);
+            if (!process) {
+                std::cout << "error: process not found" << std::endl;
+                continue;
+            }
+            
+            // Find variable    
+            Variable *var = nullptr;
+            for (Variable *v : process->variables) {
+                if (v->name == var_name && v->type != DataType::FreeSpace) {
+                    var = v;
+                    break;
+                }
+            }
+            
+            // Variable error check
+            if (var == nullptr) {
+                std::cout << "error: variable not found" << std::endl;
+                continue;
+            }
+
+            // Loop through all values provided
+            for (uint32_t i = 4; i < args.size(); i++) {
+                std::string val_str = args[i];
+                uint32_t index = offset + (i - 4);
+
+                // Use the appropriate data type to call setVariable
+                if (var->type == Char) {
+                    char val = val_str[0];
+                    setVariable(pid, var_name, index, &val, mmu, page_table, memory);
+                }
+                else if (var->type == Short) {
+                    short val = std::stoi(val_str);
+                    setVariable(pid, var_name, index, &val, mmu, page_table, memory);
+                }
+                else if (var->type == Int) {
+                    int val = std::stoi(val_str);
+                    setVariable(pid, var_name, index, &val, mmu, page_table, memory);
+                }
+                else if (var->type == Float) {
+                    float val = std::stof(val_str);
+                    setVariable(pid, var_name, index, &val, mmu, page_table, memory);
+                }
+                else if (var->type == Long) {
+                    long val = std::stol(val_str);
+                    setVariable(pid, var_name, index, &val, mmu, page_table, memory);
+                }
+                else if (var->type == Double) {
+                    double val = std::stod(val_str);
+                    setVariable(pid, var_name, index, &val, mmu, page_table, memory);
+                }
+            }
+        } 
+        else if (command == "print") {
+            
+        } 
+        else if (command == "free") {
+            
+        } 
+        else if (command == "terminate") {
+            
+        } 
         else if (command == "exit") {
             break;
         } else {
@@ -187,6 +256,60 @@ void setVariable(uint32_t pid, std::string var_name, uint32_t offset, void *valu
     //   - insert `value` into `memory` at physical address
     //   * note: this function only handles a single element (i.e. you'll need to call this within a loop when setting
     //           multiple elements of an array)
+
+    // Access the variable (some redundant code with the checks, but better safe than sorry)
+    // PID error check
+    Process *process = mmu->getProcess(pid);
+    if (process == nullptr) {
+        std::cout << "error: process not found" << std::endl;
+        return;
+    }
+
+    // Find variable
+    Variable *var = nullptr;
+    for (Variable *v : process->variables) {
+        if (v->name == var_name && v->type != DataType::FreeSpace) {
+            var = v;
+            break;
+        }
+    }
+
+    // Variable error check
+    if (var == nullptr) {
+        std::cout << "error: variable not found" << std::endl;
+        return;
+    }
+
+    // Get the size of the data type
+    uint32_t elementSizeBytes = 1;
+    if (var->type == Char) elementSizeBytes = 1;
+    else if (var->type == Short) elementSizeBytes = 2;
+    else if (var->type == Int || var->type == Float) elementSizeBytes = 4;
+    else if (var->type == Long || var->type == Double) elementSizeBytes = 8;
+
+    // Determine total number of elements
+    uint32_t numElements = var->size / elementSizeBytes;
+
+    // Index out of bounds error check
+    if (offset >= numElements) {
+        std::cout << "error: index out of range" << std::endl;
+        return;
+    }
+
+    // Compute virtual address
+    uint32_t virtual_address = var->virtual_address + (offset * elementSizeBytes);
+
+    // Translate to physical address
+    int physical_address = page_table->getPhysicalAddress(pid, virtual_address);
+
+    // Physical memory error
+    if (physical_address < 0 || physical_address >= PHYSICAL_MEMORY) {
+        std::cout << "error: invalid memory access at " << physical_address << std::endl;
+        return;
+    }
+
+    // Write value into memory
+    memcpy(&memory[physical_address], value, elementSizeBytes);
 }
 
 void freeVariable(uint32_t pid, std::string var_name, Mmu *mmu, PageTable *page_table) {

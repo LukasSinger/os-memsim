@@ -57,12 +57,17 @@ void PageTable::addEntry(uint32_t pid, int page_number) {
                 frame_found = false;
                 break;
             }
-            if (frame_found) break;
         }
+        if (frame_found) break;
     }
-    if (!frame_found) std::cout << "error: illegal frame allocation (should have been detected earlier)" << std::endl;
-    else _free_frames--;
-    _table[entry] = frame;
+    if (!frame_found) {
+        std::cout << "error: illegal frame allocation (should have been detected earlier)" << std::endl;
+        return;
+    }
+    else {      
+        _free_frames--;
+        _table[entry] = frame;
+    }
 }
 
 int PageTable::getPage(uint32_t virtual_address) {
@@ -86,6 +91,8 @@ int PageTable::getPhysicalAddress(uint32_t pid, uint32_t virtual_address) {
     int address = -1;
     if (_table.count(entry) > 0) {
         // TODO: implement this!
+        int frame_number = _table[entry];
+        address = frame_number * _page_size + page_offset;
     }
 
     return address;
