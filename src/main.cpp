@@ -15,6 +15,7 @@ void setVariable(uint32_t pid, std::string var_name, uint32_t offset, void *valu
 void freeVariable(uint32_t pid, std::string var_name, Mmu *mmu, PageTable *page_table);
 void terminateProcess(uint32_t pid, Mmu *mmu, PageTable *page_table);
 void splitString(std::string text, char d, std::vector<std::string> &result);
+void printVariable(uint32_t pid, std::string var_name, Mmu* mmu, PageTable* page_table, uint8_t* memory);
 
 int main(int argc, char **argv) {
     // Ensure user specified page size as a command line parameter
@@ -158,7 +159,16 @@ int main(int argc, char **argv) {
             }
             else {
                 // assume format PID:var_name
-                
+                size_t colon = arg.find(':');
+                if (colon == std::string::npos) {
+                    std::cout << "error: command not recognized" << std::endl;
+                    continue;
+                }
+
+                uint32_t pid = std::stoi(arg.substr(0, colon));
+                std::string var_name = arg.substr(colon + 1);
+
+                printVariable(pid, var_name, mmu, page_table, memory);
             }
         } 
         else if (command == "free") {
@@ -288,8 +298,10 @@ void setVariable(uint32_t pid, std::string var_name, uint32_t offset, void *valu
     //           multiple elements of an array)
 
     // Access the variable (some redundant code with the checks, but better safe than sorry)
-    // Process not found error check
+    // Get process
     Process *process = mmu->getProcess(pid);
+
+    // Process not found error check
     if (process == nullptr) {
         std::cout << "error: process not found" << std::endl;
         return;
@@ -386,4 +398,83 @@ void splitString(std::string text, char d, std::vector<std::string> &result) {
     if (state != NONE) {
         result.push_back(token);
     }
+}
+
+void printVariable(uint32_t pid, std::string var_name, Mmu* mmu, PageTable* page_table, uint8_t* memory) {
+    // Get process
+    Process* process = mmu->getProcess(pid);
+
+    // Process not found error check
+    if (process == nullptr) {
+        std::cout << "error: process not found" << std::endl;
+        return;
+    }
+
+    // Get variable
+    Variable* var = mmu->getVariable(process, var_name);
+
+    // Variable not found error check
+    if (var == nullptr) {
+        std::cout << "error: variable not found" << std::endl;
+        return;
+    }
+
+    // Determine element size (in bytes)
+    uint32_t elementSizeBytes = 1;
+    if (var->type == Short) elementSizeBytes = 2;
+    else if (var->type == Int || var->type == Float) elementSizeBytes = 4;
+    else if (var->type == Long || var->type == Double) elementSizeBytes = 8;
+
+    // Number of elements
+    uint32_t numElements = var->size / elementSizeBytes;
+
+    // Only print up to 4 elements
+    uint32_t limit = std::min(numElements, (uint32_t)4);
+
+    for (uint32_t i = 0; i < limit; i++) {
+        uint32_t virtual_address = var->virtual_address + i * elementSizeBytes;
+        int physical_address = page_table->getPhysicalAddress(pid, virtual_address);
+
+        if (var->type == Char) {
+            char val;
+            memcpy(&val, &memory[physical_address], 1);
+            std::cout << val;
+        }
+        else if (var->type == Short) {
+            short val;
+            memcpy(&val, &memory[physical_address], 2);
+            std::cout << val;
+        }
+        else if (var->type == Int) {
+            int val;
+            memcpy(&val, &memory[physical_address], 4);
+            std::cout << val;
+        }
+        else if (var->type == Float) {
+            float val;
+            memcpy(&val, &memory[physical_address], 4);
+            std::cout << val;
+        }
+        else if (var->type == Long) {
+            long val;
+            memcpy(&val, &memory[physical_address], 8);
+            std::cout << val;
+        }
+        else if (var->type == Double) {
+            double val;
+            memcpy(&val, &memory[physical_address], 8);
+            std::cout << val;
+        }
+
+        if (i < limit - 1) {
+            std::cout << ", ";
+        }
+    }
+
+    // If more than 4 elements, show summary
+    if (numElements > 4) {
+        std::cout << ", ... [" << numElements << " items]";
+    }
+
+    std::cout << std::endl;
 }
