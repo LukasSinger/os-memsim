@@ -45,6 +45,7 @@ int main(int argc, char **argv) {
         // TODO: implement this!
         std::vector<std::string> args;
         splitString(command, ' ', args);
+        if (args.empty()) continue;
         command = args.at(0);
         if (command == "create") {
             int text_size = std::stoi(args.at(1));
@@ -83,17 +84,30 @@ int main(int argc, char **argv) {
             }
             
             // Find variable    
-            Variable *var = nullptr;
-            for (Variable *v : process->variables) {
-                if (v->name == var_name && v->type != DataType::FreeSpace) {
-                    var = v;
-                    break;
-                }
-            }
+            Variable *var = mmu->getVariable(process, var_name);
             
             // Variable error check
             if (var == nullptr) {
                 std::cout << "error: variable not found" << std::endl;
+                continue;
+            }
+
+            // Compute number of values being set
+            uint32_t num_values = args.size() - 4;
+
+            // Determine size of each element
+            uint32_t elementSizeBytes = 1;
+            if (var->type == Char) elementSizeBytes = 1;
+            else if (var->type == Short) elementSizeBytes = 2;
+            else if (var->type == Int || var->type == Float) elementSizeBytes = 4;
+            else if (var->type == Long || var->type == Double) elementSizeBytes = 8;
+
+            // Total number of elements in the variable
+            uint32_t numElements = var->size / elementSizeBytes;
+
+            // Index out of bounds error check
+            if (offset + num_values > numElements) {
+                std::cout << "error: index out of range" << std::endl;
                 continue;
             }
 
@@ -213,6 +227,7 @@ void allocateVariable(uint32_t pid, std::string var_name, DataType type, uint32_
             }
             if (check_virtual_address + size <= (*it)->virtual_address) {
                 addr_found = true;
+                break;
             } else if (!addr_found) {
                 check_virtual_address = (*it)->virtual_address + (*it)->size;
             }
@@ -266,13 +281,7 @@ void setVariable(uint32_t pid, std::string var_name, uint32_t offset, void *valu
     }
 
     // Find variable
-    Variable *var = nullptr;
-    for (Variable *v : process->variables) {
-        if (v->name == var_name && v->type != DataType::FreeSpace) {
-            var = v;
-            break;
-        }
-    }
+    Variable *var = mmu->getVariable(process, var_name);
 
     // Variable error check
     if (var == nullptr) {
@@ -286,15 +295,6 @@ void setVariable(uint32_t pid, std::string var_name, uint32_t offset, void *valu
     else if (var->type == Short) elementSizeBytes = 2;
     else if (var->type == Int || var->type == Float) elementSizeBytes = 4;
     else if (var->type == Long || var->type == Double) elementSizeBytes = 8;
-
-    // Determine total number of elements
-    uint32_t numElements = var->size / elementSizeBytes;
-
-    // Index out of bounds error check
-    if (offset >= numElements) {
-        std::cout << "error: index out of range" << std::endl;
-        return;
-    }
 
     // Compute virtual address
     uint32_t virtual_address = var->virtual_address + (offset * elementSizeBytes);

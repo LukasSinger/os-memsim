@@ -39,6 +39,7 @@ public:
     void addVariableToProcess(uint32_t pid, std::string var_name, DataType type, uint32_t size, uint32_t address);
     Process *getProcess(uint32_t pid);
     std::vector<Variable *> sortedAllocations(Process *process);
+    Variable* getVariable(Process* process, const std::string& name);
     void print();
 };
 

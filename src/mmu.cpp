@@ -69,6 +69,17 @@ std::vector<Variable *> Mmu::sortedAllocations(Process *process) {
     return variables;
 }
 
+Variable* Mmu::getVariable(Process* process, const std::string& name) {
+    if (!process) return nullptr;
+
+    for (Variable* v : process->variables) {
+        if (v->name == name && v->type != DataType::FreeSpace) {
+            return v;
+        }
+    }
+    return nullptr;
+}
+
 void Mmu::print() {
     int i, j;
 
