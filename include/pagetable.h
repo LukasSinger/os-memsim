@@ -43,6 +43,7 @@ public:
     int getOffset(uint32_t virtual_address);
     int getPhysicalAddress(uint32_t pid, uint32_t virtual_address);
     void print();
+    void removeEntry(uint32_t pid, int page_number);
 };
 
 #endif // __PAGETABLE_H_

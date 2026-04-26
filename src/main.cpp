@@ -172,7 +172,9 @@ int main(int argc, char **argv) {
             }
         } 
         else if (command == "free") {
-            
+            uint32_t pid = std::stoi(args.at(1));
+            std::string var_name = args.at(2);
+            freeVariable(pid, var_name, mmu, page_table);
         } 
         else if (command == "terminate") {
             
@@ -343,6 +345,69 @@ void freeVariable(uint32_t pid, std::string var_name, Mmu *mmu, PageTable *page_
     // TODO: implement this!
     //   - remove entry from MMU
     //   - free page if this variable was the only one on a given page
+
+    // Get process
+    Process* process = mmu->getProcess(pid);
+
+    // Process not found error check
+    if (process == nullptr) {
+        std::cout << "error: process not found" << std::endl;
+        return;
+    }
+
+    // Get variable
+    Variable* var = mmu->getVariable(process, var_name);
+
+    // Variable not found error check
+    if (var == nullptr) {
+        std::cout << "error: variable not found" << std::endl;
+        return;
+    }
+
+    // Find where this variable lives in memory
+    uint32_t start = var->virtual_address;
+    uint32_t end   = start + var->size;
+
+    // Determine pages used by this variable
+    int start_page = page_table->getPage(start);
+    int end_page   = page_table->getPage(end - 1);
+
+    // Get all variables in this process
+    std::vector<Variable*> vars = mmu->sortedAllocations(process);
+
+    // Loop through each page used by the variable
+    for (int p = start_page; p <= end_page; p++) {
+        bool page_still_used = false;
+
+        // Loop through all variables in this process
+        for (Variable* other_var : vars) {
+            // Skip the variable we're deleting
+            if (other_var->name == var_name) {
+                continue;
+            }
+
+            // Fine the location of the other variable
+            uint32_t o_start = other_var->virtual_address;
+            uint32_t o_end   = o_start + other_var->size;
+
+            int o_start_page = page_table->getPage(o_start);
+            int o_end_page   = page_table->getPage(o_end - 1);
+
+            // Check if this page overlaps (if yes, it means the other variable is using this page, which means we cannot remove this page)
+            if (p >= o_start_page && p <= o_end_page) {
+                page_still_used = true;
+                break;
+            }
+        }
+
+        // If no other variable uses this page, free it
+        if (!page_still_used) {
+            page_table->removeEntry(pid, p);
+        }
+    }
+
+    // Remove variable from MMU
+    mmu->removeVariable(pid, var_name);
 }
 
 void terminateProcess(uint32_t pid, Mmu *mmu, PageTable *page_table) {

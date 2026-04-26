@@ -120,3 +120,13 @@ void PageTable::print() {
         printf("%5d | %11d | %12d\n", pid, page, frame);
     }
 }
+
+void PageTable::removeEntry(uint32_t pid, int page_number) {
+    std::string key = getLookupString(pid, page_number);
+
+    std::map<std::string, int>::iterator it = _table.find(key);
+    if (it != _table.end()) {
+        _table.erase(it);
+        _free_frames++;
+    }
+}

@@ -70,7 +70,9 @@ std::vector<Variable *> Mmu::sortedAllocations(Process *process) {
 }
 
 Variable* Mmu::getVariable(Process* process, const std::string& name) {
-    if (!process) return nullptr;
+    if (process == nullptr) {
+        return nullptr;
+    }
 
     for (Variable* v : process->variables) {
         if (v->name == name && v->type != DataType::FreeSpace) {
@@ -103,6 +105,24 @@ void Mmu::print() {
             }
 
             printf("%5d | %-13s |   0x%08X | %10d\n", _processes[i]->pid, var->name.c_str(), var->virtual_address, var->size);
+        }
+    }
+}
+
+void Mmu::removeVariable(uint32_t pid, const std::string& var_name) {
+    Process* process = getProcess(pid);
+    if (process == nullptr) {
+        return;
+    }
+
+    for (std::vector<Variable*>::iterator it = process->variables.begin(); it != process->variables.end(); ) {
+        Variable* var = *it;
+
+        if (var->name == var_name && var->type != DataType::FreeSpace) {
+            delete var;
+            it = process->variables.erase(it);
+        } else {
+            ++it;
         }
     }
 }
