@@ -108,5 +108,15 @@ void PageTable::print() {
 
     for (i = 0; i < keys.size(); i++) {
         // TODO: print all pages
+        std::string key = keys[i];
+
+        // Key format is "pid|page"
+        size_t sep = key.find('|');
+
+        uint32_t pid = std::stoi(key.substr(0, sep));
+        int page = std::stoi(key.substr(sep + 1));
+        int frame = _table[key];
+
+        printf("%5d | %11d | %12d\n", pid, page, frame);
     }
 }
