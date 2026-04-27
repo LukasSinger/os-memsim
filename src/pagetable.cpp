@@ -130,3 +130,24 @@ void PageTable::removeEntry(uint32_t pid, int page_number) {
         _free_frames++;
     }
 }
+
+std::vector<int> PageTable::getPagesForPid(uint32_t pid) {
+    std::vector<int> pages;
+
+    // Loop through the page table
+    for (std::map<std::string, int>::iterator it = _table.begin(); it != _table.end(); ++it) {
+        std::string key = it->first;
+
+        size_t sep = key.find('|');
+        uint32_t entry_pid = std::stoi(key.substr(0, sep));
+        int page = std::stoi(key.substr(sep + 1));
+
+        // Check if this entry belongs to our PID
+        if (entry_pid == pid) {
+            // Store the page
+            pages.push_back(page);
+        }
+    }
+
+    return pages;
+}

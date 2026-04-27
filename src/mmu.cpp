@@ -126,3 +126,30 @@ void Mmu::removeVariable(uint32_t pid, const std::string& var_name) {
         }
     }
 }
+
+void Mmu::removeProcess(uint32_t pid) {
+    // Loop through all processes until we find the one we are looking for
+    for (std::vector<Process*>::iterator it = _processes.begin(); it != _processes.end(); ) {
+        // Get the current process
+        Process* process = *it;
+
+        // Check if this is the process we are looking for
+        if ((process != nullptr) && (process->pid == pid)) {
+            // Delete all variables in that process
+            for (std::vector<Variable*>::iterator vit = process->variables.begin(); vit != process->variables.end(); ++vit) {
+                delete *vit;
+            }
+
+            // Delete the process itself
+            delete process;
+
+            // Remove it from the vector
+            it = _processes.erase(it);
+
+            return;
+        } 
+        else {
+            ++it;
+        }
+    }
+}

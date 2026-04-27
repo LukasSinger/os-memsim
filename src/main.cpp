@@ -177,7 +177,8 @@ int main(int argc, char **argv) {
             freeVariable(pid, var_name, mmu, page_table);
         } 
         else if (command == "terminate") {
-            
+            uint32_t pid = std::stoi(args.at(1));
+            terminateProcess(pid, mmu, page_table);
         } 
         else if (command == "exit") {
             break;
@@ -414,6 +415,26 @@ void terminateProcess(uint32_t pid, Mmu *mmu, PageTable *page_table) {
     // TODO: implement this!
     //   - remove process from MMU
     //   - free all pages associated with given process
+
+    // Get process
+    Process* process = mmu->getProcess(pid);
+
+    // Check if process exists
+    if (process == nullptr) {
+        std::cout << "error: process not found" << std::endl;
+        return;
+    }
+
+    // Get all pages belonging to this process
+    std::vector<int> pages = page_table->getPagesForPid(pid);
+
+    // Free each page
+    for (int p : pages) {
+        page_table->removeEntry(pid, p);
+    }
+
+    // Remove process from MMU
+    mmu->removeProcess(pid);
 }
 
 /*

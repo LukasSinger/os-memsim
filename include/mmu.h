@@ -43,6 +43,7 @@ public:
     void printProcesses();
     void print();
     void removeVariable(uint32_t pid, const std::string& var_name);
+    void removeProcess(uint32_t pid);
 };
 
 #endif // __MMU_H_

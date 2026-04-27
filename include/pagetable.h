@@ -44,6 +44,7 @@ public:
     int getPhysicalAddress(uint32_t pid, uint32_t virtual_address);
     void print();
     void removeEntry(uint32_t pid, int page_number);
+    std::vector<int> getPagesForPid(uint32_t pid);
 };
 
 #endif // __PAGETABLE_H_
